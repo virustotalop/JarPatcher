@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -13,9 +14,11 @@ import java.util.jar.Manifest;
 public class JarPatcher {
 
 	private static File classFolder = new File("classes");
-
+	private static ArrayList<String> loadedClasses = new ArrayList<String>();
+	
 	public static void main(String[] args)
 	{
+		
 		if(!classFolder.exists())
 			classFolder.mkdir();
 		
@@ -33,6 +36,11 @@ public class JarPatcher {
 			return;
 		}
 
+		if(classFolder.listFiles().length > 0)
+		{
+			JarPatcher.loadClassFiles(classFolder.listFiles());
+		}
+		
 		JarFile jarFile = null;
 		Manifest manifest = null;
 		String main = null;
@@ -44,6 +52,7 @@ public class JarPatcher {
 			manifest = jarFile.getManifest();
 			main = manifest.getMainAttributes().getValue("Main-Class");
 			urlLoader = new URLClassLoader(new URL[] {file.toURL()}, JarPatcher.class.getClassLoader());
+			System.out.println("url: " + file.toURL().getPath());
 			jarEntries = jarFile.entries();
 		}
 		catch(Exception ex)
@@ -52,29 +61,12 @@ public class JarPatcher {
 		}
 
 
-		if(classFolder.listFiles().length > 0)
-		{
-			URLClassLoader cFileLoader;
-			for(File cFile : classFolder.listFiles())
-			{
-				try 
-				{
-					cFileLoader = new URLClassLoader(new URL[]{file.toURL()}, JarPatcher.class.getClassLoader());
-					String entryName = cFile.getCanonicalPath().replace("/", ".");
-					entryName = entryName.substring(0, entryName.lastIndexOf("."));
-					cFileLoader.loadClass(entryName);
-				} 
-				catch (IOException | ClassNotFoundException e) 
-				{
-					e.printStackTrace();
-				}
-			}
-		}
+		
 
 		while(jarEntries.hasMoreElements())
 		{
 			JarEntry entry = jarEntries.nextElement();
-			System.out.println(entry.getName());
+			
 
 			if(entry.getName().endsWith(".class"))
 			{
@@ -82,7 +74,11 @@ public class JarPatcher {
 				entryName = entryName.substring(0, entryName.lastIndexOf("."));
 				try 
 				{
-					urlLoader.loadClass(entryName);
+					System.out.println(entryName);
+					if(!JarPatcher.loadedClasses.contains(entryName))
+						urlLoader.loadClass(entryName);
+					else
+						System.out.println("Contains entry name!");
 				}
 				catch(NoClassDefFoundError | ClassNotFoundException ex) //This should be updated in the future, I blame maven for making me add this
 				{
@@ -93,22 +89,57 @@ public class JarPatcher {
 		try
 		{
 			Class<?> mainClass = urlLoader.loadClass(main);
-			if(mainClass == null)
-				System.out.println("null");
 			Method mainMethod = mainClass.getDeclaredMethod("main", new Class[] {String[].class});
 
-			for(String string : newArgs)
+			if(newArgs != null)
 			{
-				System.out.println("args: " + string);
+				for(String string : newArgs)
+				{
+					System.out.println("args: " + string);
+				}
 			}
 
-			mainMethod.invoke(mainClass.newInstance(), new Object[] {newArgs});
+			mainMethod.invoke(null, new Object[] {newArgs});
 			urlLoader.close();
 			jarFile.close();
 		}
 		catch(Exception ex)
 		{
 			ex.printStackTrace();
+		}
+	}
+	
+	private static void loadClassFiles(File[] files)
+	{
+		try
+		{
+			for(File file : files)
+			{
+				if(file.isFile())
+				{
+					System.out.println("url: " + new File("classes").toURL().getPath());
+					URLClassLoader cFileLoader = new URLClassLoader(new URL[]{new File("classes").toURL()}, JarPatcher.class.getClassLoader());
+					String absPath = file.getAbsolutePath();
+					String classesPath = absPath.substring(absPath.indexOf("classes"));
+					String entryName = classesPath.substring(classesPath.indexOf("\\") + 1).replace("\\", ".");
+					entryName = entryName.substring(0, entryName.indexOf(".class"));
+					System.out.println("entname: " + entryName);
+					//entryName = entryName.substring(0, entryName.lastIndexOf("."));
+					Class<?> theClass = cFileLoader.loadClass(entryName);
+					//Method testMethod = theClass.getMethod("initialize");
+					//testMethod.invoke(null);
+					loadedClasses.add(entryName);
+					System.out.println("Loaded file!");
+					cFileLoader.close();
+				}
+				else 
+				{
+					JarPatcher.loadClassFiles(file.listFiles());
+				}
+			}
+		}catch(StackOverflowError | NullPointerException | ClassNotFoundException | IOException | SecurityException | IllegalArgumentException e)
+		{
+			e.printStackTrace();
 		}
 	}
 }
