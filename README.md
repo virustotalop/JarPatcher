@@ -1,4 +1,4 @@
-# JarPatcher
+# JarPatcher [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/virustotalop/JarPatcher?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 JarPatcher allows you to patch or inject code into jar files on runtime. Put compiled class files into the classes folder that is generated. On run time the class files are loaded in. 
 
 # Usage
