@@ -2,11 +2,14 @@ package me.virustotal.jarpatcher;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Stack;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
@@ -15,10 +18,14 @@ public class JarPatcher {
 
 	private static File classFolder = new File("classes");
 	private static ArrayList<String> loadedClasses = new ArrayList<String>();
+	private static URLClassLoader urlLoader;
 	
 	public static void main(String[] args)
 	{
 		
+		
+			
+
 		if(!classFolder.exists())
 			classFolder.mkdir();
 		
@@ -36,22 +43,34 @@ public class JarPatcher {
 			return;
 		}
 
+		try 
+		{
+			urlLoader = new URLClassLoader(new URL[] {classFolder.toURL(), file.toURL()}, JarPatcher.class.getClassLoader());
+		} catch (MalformedURLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
 		if(classFolder.listFiles().length > 0)
 		{
 			JarPatcher.loadClassFiles(classFolder.listFiles());
 		}
 		
+		
+		
 		JarFile jarFile = null;
 		Manifest manifest = null;
 		String main = null;
-		URLClassLoader urlLoader = null;
 		Enumeration<JarEntry> jarEntries = null;
+		
 		try
 		{
 			jarFile = new JarFile(file);
 			manifest = jarFile.getManifest();
 			main = manifest.getMainAttributes().getValue("Main-Class");
-			urlLoader = new URLClassLoader(new URL[] {file.toURL()}, JarPatcher.class.getClassLoader());
+			//JarPatcher.setURI(file);
+			//urlLoader = new URLClassLoader(new URL[] {file.toURL()}, JarPatcher.class.getClassLoader());
 			System.out.println("url: " + file.toURL().getPath());
 			jarEntries = jarFile.entries();
 		}
@@ -59,9 +78,6 @@ public class JarPatcher {
 		{
 			ex.printStackTrace();
 		}
-
-
-		
 
 		while(jarEntries.hasMoreElements())
 		{
@@ -118,19 +134,14 @@ public class JarPatcher {
 				if(file.isFile())
 				{
 					System.out.println("url: " + new File("classes").toURL().getPath());
-					URLClassLoader cFileLoader = new URLClassLoader(new URL[]{new File("classes").toURL()}, JarPatcher.class.getClassLoader());
 					String absPath = file.getAbsolutePath();
 					String classesPath = absPath.substring(absPath.indexOf("classes"));
 					String entryName = classesPath.substring(classesPath.indexOf("\\") + 1).replace("\\", ".");
 					entryName = entryName.substring(0, entryName.indexOf(".class"));
 					System.out.println("entname: " + entryName);
-					//entryName = entryName.substring(0, entryName.lastIndexOf("."));
-					Class<?> theClass = cFileLoader.loadClass(entryName);
-					//Method testMethod = theClass.getMethod("initialize");
-					//testMethod.invoke(null);
+					urlLoader.loadClass(entryName);
 					loadedClasses.add(entryName);
 					System.out.println("Loaded file!");
-					cFileLoader.close();
 				}
 				else 
 				{
