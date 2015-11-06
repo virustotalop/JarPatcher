@@ -50,7 +50,7 @@ public class Test {
 The new test class goes into the "classes" folder. The Test.class should go into the correct directory for example the directory would be /classes/me/virustotal/jarpatchertest/Test.class. Classes in the classes directory are loaded first and then the jar that is provided is parsed and the class files are loaded.
 
 # License
-JarPatcher is licensed under the MIT License
+JarPatcher is licensed under the [MIT License](https://github.com/virustotalop/JarPatcher/blob/master/LICENSE)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
