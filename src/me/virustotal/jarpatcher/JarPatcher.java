@@ -2,9 +2,6 @@ package me.virustotal.jarpatcher;
 
 import java.io.File;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -15,8 +12,7 @@ import java.util.jar.Manifest;
 public class JarPatcher {
 
 	private static File classFolder = new File("classes");
-	private static ArrayList<String> loadedClasses = new ArrayList<String>();
-	private static URLClassLoader urlLoader;
+	protected static ArrayList<String> loadedClasses = new ArrayList<String>();
 	private static boolean debug = false;
 
 	public static void main(String[] args)
@@ -48,18 +44,11 @@ public class JarPatcher {
 			return;
 		}
 
-		try 
-		{
-			urlLoader = new URLClassLoader(new URL[] {classFolder.toURL(), file.toURL()}, JarPatcher.class.getClassLoader());
-		} 
-		catch (MalformedURLException e) 
-		{
-			e.printStackTrace();
-		}
+		ClassUtils.setClassLoader(new File[] {classFolder, file});
 
 		if(classFolder.listFiles().length > 0)
 		{
-			JarPatcher.loadClassFiles(classFolder.listFiles());
+			ClassUtils.loadClassFiles(classFolder.listFiles());
 		}
 
 		JarFile jarFile = null;
@@ -90,7 +79,7 @@ public class JarPatcher {
 				{
 					if(!JarPatcher.loadedClasses.contains(entryName))
 					{
-						urlLoader.loadClass(entryName);
+						ClassUtils.getUrlLoader().loadClass(entryName);
 						
 						if(debug)
 						{
@@ -106,7 +95,7 @@ public class JarPatcher {
 		}
 		try
 		{
-			Class<?> mainClass = urlLoader.loadClass(main);
+			Class<?> mainClass = ClassUtils.getUrlLoader().loadClass(main);
 			Method mainMethod = mainClass.getDeclaredMethod("main", new Class[] {String[].class});
 
 			if(JarPatcher.debug)
@@ -124,39 +113,12 @@ public class JarPatcher {
 			}
 
 			mainMethod.invoke(null, new Object[] {newArgs});
-			urlLoader.close();
+			ClassUtils.getUrlLoader().close();
 			jarFile.close();
 		}
 		catch(Exception ex)
 		{
 			ex.printStackTrace();
-		}
-	}
-
-	private static void loadClassFiles(File[] files)
-	{
-		try
-		{
-			for(File file : files)
-			{
-				if(file.isFile())
-				{
-					String absPath = file.getAbsolutePath();
-					String classesPath = absPath.substring(absPath.indexOf("classes"));
-					String entryName = classesPath.substring(classesPath.indexOf("\\") + 1).replace("\\", ".");
-					entryName = entryName.substring(0, entryName.indexOf(".class"));
-					urlLoader.loadClass(entryName);
-					loadedClasses.add(entryName);
-				}
-				else 
-				{
-					JarPatcher.loadClassFiles(file.listFiles());
-				}
-			}
-		}
-		catch(StackOverflowError | NullPointerException | ClassNotFoundException | SecurityException | IllegalArgumentException e)
-		{
-			e.printStackTrace();
 		}
 	}
 }
